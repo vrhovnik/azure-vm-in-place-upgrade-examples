@@ -6,18 +6,19 @@ Before proceeding you need to read this two articles to set the base:
 1.	[In-place upgrade](https://learn.microsoft.com/en-us/azure/virtual-machines/windows-in-place-upgrade) docs
 2.	[Windows Setup API](https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/windows-setup-command-line-options?view=windows-11) options
 
+# Table of contents
+
 <!-- TOC -->
-* [Azure Virtual Machine In-place upgrade examples](#azure-virtual-machine-in-place-upgrade-examples)
 * [Prerequisites](#prerequisites)
-  * [Official way (managed disks)](#official-way--managed-disks-)
-  * [ISO with Powershell (via Azure VM Custom Script Extension and either managed Azure SDK or Azure Automation or serverless aka Azure Functions)](#iso-with-powershell--via-azure-vm-custom-script-extension-and-either-managed-azure-sdk-or-azure-automation-or-serverless-aka-azure-functions-)
-  * [Integration with Azure Monitor to get the logs in one place](#integration-with-azure-monitor-to-get-the-logs-in-one-place)
-  * [Common errors and solutions](#common-errors-and-solutions)
+* [Official way (managed disks)](#official-way--managed-disks-)
+* [ISO with Powershell (via Azure VM Custom Script Extension and either managed Azure SDK or Azure Automation or serverless aka Azure Functions)](#iso-with-powershell--via-azure-vm-custom-script-extension-and-either-managed-azure-sdk-or-azure-automation-or-serverless-aka-azure-functions-)
+* [Integration with Azure Monitor to get the logs in one place](#integration-with-azure-monitor-to-get-the-logs-in-one-place)
+* [Common errors and solutions](#common-errors-and-solutions)
 * [Links for additional information](#links-for-additional-information)
 * [Contributing](#contributing)
 <!-- TOC -->
 
-# Prerequisites
+## Prerequisites
 
 1. [PowerShell](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-windows)
 2. [Azure](https://portal.azure.com) Subscription and [Azure PowerShell](https://learn.microsoft.com/en-us/powershell/azure/install-az-ps?view=azps-9.4.0) module installed
