@@ -3,8 +3,25 @@
 An in-place upgrade allows you to go from an older operating system to a newer one while keeping your settings, server roles, and data intact. This repository shows few examples of how to effectively perform the procedure. If you want to deep dive into how the update works on Windows Server OS, check this article [here](https://learn.microsoft.com/en-us/windows-server/get-started/perform-in-place-upgrade).
 
 Before proceeding you need to read this two articles to set the base:
-a.	[In-place upgrade](https://learn.microsoft.com/en-us/azure/virtual-machines/windows-in-place-upgrade) docs
-b.	[Windows Setup API](https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/windows-setup-command-line-options?view=windows-11) options
+1.	[In-place upgrade](https://learn.microsoft.com/en-us/azure/virtual-machines/windows-in-place-upgrade) docs
+2.	[Windows Setup API](https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/windows-setup-command-line-options?view=windows-11) options
+
+<!-- TOC -->
+* [Azure Virtual Machine In-place upgrade examples](#azure-virtual-machine-in-place-upgrade-examples)
+* [Prerequisites](#prerequisites)
+  * [Official way (managed disks)](#official-way--managed-disks-)
+  * [ISO with Powershell (via Azure VM Custom Script Extension and either managed Azure SDK or Azure Automation or serverless aka Azure Functions)](#iso-with-powershell--via-azure-vm-custom-script-extension-and-either-managed-azure-sdk-or-azure-automation-or-serverless-aka-azure-functions-)
+  * [Integration with Azure Monitor to get the logs in one place](#integration-with-azure-monitor-to-get-the-logs-in-one-place)
+  * [Common errors and solutions](#common-errors-and-solutions)
+* [Links for additional information](#links-for-additional-information)
+* [Contributing](#contributing)
+<!-- TOC -->
+
+# Prerequisites
+
+1. [PowerShell](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-windows)
+2. [Azure](https://portal.azure.com) Subscription and [Azure PowerShell](https://learn.microsoft.com/en-us/powershell/azure/install-az-ps?view=azps-9.4.0) module installed
+3. [Owner role](https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#owner) on the subscription
 
 ## Official way (managed disks)
 
