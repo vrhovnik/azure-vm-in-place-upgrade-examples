@@ -59,28 +59,47 @@ if ($InstallBicep) {
 Write-Output "Using location $Location data center"
 
 # create resource group if it doesn't exist with bicep file stored in bicep folder
-$groupNameReturnValue = New-AzSubscriptionDeployment -Location $Location -TemplateFile "bicep\rg.bicep" | ConvertFrom-Json | Select-Object properties
+$groupNameReturnValue = New-AzSubscriptionDeployment -Location $Location -TemplateFile "bicep\rg.bicep" -TemplateParameterFile "bicep\rg.parameters.json" | ConvertFrom-Json | Select-Object properties
 Write-Information $groupNameReturnValue
 $groupName = $groupNameReturnValue.properties.outputs.rgName.value
-Write-Information $groupName
+Write-Output "$groupName resource group created."
+
 #deploy log analytics file if not already deployed
 $logAnalyticsNameReturnValue = New-AzResourceGroupDeployment -ResourceGroupName $groupName -TemplateFile "bicep\log-analytics.bicep" -TemplateParameterFile "bicep\log-analytics.parameters.json" | ConvertFrom-Json | Select-Object properties
 Write-Information $logAnalyticsNameReturnValue
 $logAnalyticsName = $logAnalyticsNameReturnValue.properties.outputs.logAnalyticsName.value
+Write-Output "Log analytics workspace $logAnalyticsName created."
 
-#deploy VM if not already deployed with parameters
-Write-Information "Log analytics name is $logAnalyticsName"
-$vmName = Read-Host "Enter VM name"
-Write-Information "VM name is $vmName"
-$windowsAdminUsername = Read-Host "Enter username for Windows VM"
-Write-Information "Windows username to authenticate $windowsAdminUsername"
-$windowsAdminPassword = Read-Host "Enter password for Windows VM" -AsSecureString
-$publicIpAddressName = Read-Host "Enter public IP address name to be able to RDP into VM"
-Write-Information "Public IP address name: $publicIpAddressName"
-New-AzResourceGroupDeployment -ResourceGroupName $groupName -TemplateFile "bicep\vm.bicep" -logAnalyticsWorkspace $logAnalyticsName -vmName $vmName -windowsAdminPassword $windowsAdminPassword -publicIpAddressName $publicIpAddressName -windowsAdminUsername $windowsAdminUsername    
+if ($UseEnvFile)
+{
+    Get-Content $EnvFileToReadFrom | ForEach-Object {
+        $name, $value = $_.split('=')
+        Set-Variable -Name $name -Value $value
+        Write-Information "Setting $name to $value"
+    }    
+}
+else
+{
+    #deploy VM if not already deployed with parameters 
+    $vmName = Read-Host "Enter VM name"    
+    $windowsAdminUsername = Read-Host "Enter username for Windows VM"
+    $windowsAdminPassword = Read-Host "Enter password for Windows VM" -AsSecureString
+    $publicIpAddressName = Read-Host "Enter public IP address name to be able to RDP into VM"    
+}
 
+Write-Output "VM name is $vmName"
+Write-Output "Windows username to authenticate $windowsAdminUsername"
+Write-Output "Public IP address name: $publicIpAddressName"
+# deploy resource group
+New-AzResourceGroupDeployment -ResourceGroupName $groupName -TemplateFile "bicep\vm.bicep" -logAnalyticsWorkspace $logAnalyticsName -vmName $vmName -windowsAdminPassword $windowsAdminPassword -publicIpAddressName $publicIpAddressName -windowsAdminUsername $windowsAdminUsername
+Write-Information "Creating resources in $groupName resource group."
 #deploy app registration if not already deployed
-
+$appRegistrationReturnValue = New-AzSubscriptionDeployment -Location $Location -TemplateFile "bicep\app-registration.bicep" -TemplateParameterFile "bicep\app-registration.parameters.json" | ConvertFrom-Json | Select-Object properties
+Write-Information "Azure AD App Registration $appRegistrationReturnValue"
+$azureADApp = $appRegistrationReturnValue.properties.outputs.azureAdAppId.value
+Write-Output "Azure Ad App Id: $azureADApp"
+Write-Output "Resources are created. Check Azure portal for details."
+Start-Process "https://portal.azure.com"
 
 Stop-Transcript
 
