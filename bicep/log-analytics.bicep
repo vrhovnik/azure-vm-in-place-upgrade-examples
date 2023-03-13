@@ -20,4 +20,7 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
     }
   }
 }
+var primaryKey = listKeys(logAnalytics.id, logAnalytics.apiVersion).primarySharedKey
+output logAnalyticsId string = logAnalytics.id
 output logAnalyticsName string = logAnalytics.name
+output logAnalyticsKey string = primaryKey

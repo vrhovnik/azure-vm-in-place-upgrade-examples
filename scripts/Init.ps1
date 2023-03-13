@@ -13,16 +13,16 @@
 # Author      : Bojan Vrhovnik
 # GitHub      : https://github.com/vrhovnik
 # Version 1.2.0
-# SHORT CHANGE DESCRIPTION: adding environment files and azure app registration
+# SHORT CHANGE DESCRIPTION: adding app registration
 #>
 param(
     [Parameter(HelpMessage = "Provide the location")]
     $Location = "WestEurope",
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [switch]$UseEnvFile,
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [switch]$InstallModules,
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [switch]$InstallBicep
 )
 
@@ -48,7 +48,8 @@ if ($InstallModules)
     Write-Output "Modules installed and registered, continuing to Azure deployment nad if selected, Bicep install."
 }
 
-if ($InstallBicep) {
+if ($InstallBicep)
+{
     # install bicep
     Write-Output "Installing Bicep."
     # & Install-Bicep.ps1
@@ -59,15 +60,17 @@ if ($InstallBicep) {
 Write-Output "Using location $Location data center"
 
 # create resource group if it doesn't exist with bicep file stored in bicep folder
-$groupNameReturnValue = New-AzSubscriptionDeployment -Location $Location -TemplateFile "bicep\rg.bicep" -TemplateParameterFile "bicep\rg.parameters.json" | ConvertFrom-Json | Select-Object properties
+$groupNameReturnValue = New-AzSubscriptionDeployment -Location $Location -TemplateFile "..\bicep\rg.bicep" -TemplateParameterFile "..\bicep\rg.parameters.json"
 Write-Information $groupNameReturnValue
-$groupName = $groupNameReturnValue.properties.outputs.rgName.value
+$groupName = $groupNameReturnValue.Outputs.rgName.Value
 Write-Output "$groupName resource group created."
 
 #deploy log analytics file if not already deployed
-$logAnalyticsNameReturnValue = New-AzResourceGroupDeployment -ResourceGroupName $groupName -TemplateFile "bicep\log-analytics.bicep" -TemplateParameterFile "bicep\log-analytics.parameters.json" | ConvertFrom-Json | Select-Object properties
+$logAnalyticsNameReturnValue = New-AzResourceGroupDeployment -ResourceGroupName $groupName -TemplateFile "..\bicep\log-analytics.bicep" -TemplateParameterFile "..\bicep\log-analytics.parameters.json"
 Write-Information $logAnalyticsNameReturnValue
-$logAnalyticsName = $logAnalyticsNameReturnValue.properties.outputs.logAnalyticsName.value
+$logAnalyticsName = $logAnalyticsNameReturnValue.Outputs.logAnalyticsName.Value
+$logAnalyticsId = $logAnalyticsNameReturnValue.Outputs.logAnalyticsId.Value
+$logAnalyticsKey = $logAnalyticsNameReturnValue.Outputs.logAnalyticsKey.Value
 Write-Output "Log analytics workspace $logAnalyticsName created."
 
 if ($UseEnvFile)
@@ -76,28 +79,50 @@ if ($UseEnvFile)
         $name, $value = $_.split('=')
         Set-Variable -Name $name -Value $value
         Write-Information "Setting $name to $value"
-    }    
+    }
+    #set password as secure string
+    $windowsAdminPassword = ConvertTo-SecureString -String $windowsAdminPassword -AsPlainText -Force
 }
 else
 {
     #deploy VM if not already deployed with parameters 
-    $vmName = Read-Host "Enter VM name"    
+    $vmName = Read-Host "Enter VM name"
     $windowsAdminUsername = Read-Host "Enter username for Windows VM"
     $windowsAdminPassword = Read-Host "Enter password for Windows VM" -AsSecureString
-    $publicIpAddressName = Read-Host "Enter public IP address name to be able to RDP into VM"    
+    $publicIpAddressName = Read-Host "Enter public IP address name to be able to RDP into VM"
 }
 
 Write-Output "VM name is $vmName"
 Write-Output "Windows username to authenticate $windowsAdminUsername"
 Write-Output "Public IP address name: $publicIpAddressName"
 # deploy resource group
-New-AzResourceGroupDeployment -ResourceGroupName $groupName -TemplateFile "bicep\vm.bicep" -logAnalyticsWorkspace $logAnalyticsName -vmName $vmName -windowsAdminPassword $windowsAdminPassword -publicIpAddressName $publicIpAddressName -windowsAdminUsername $windowsAdminUsername
+New-AzResourceGroupDeployment -ResourceGroupName $groupName -TemplateFile "..\bicep\vm.bicep" -vmName $vmName -windowsAdminPassword $windowsAdminPassword -publicIpAddressName $publicIpAddressName -windowsAdminUsername $windowsAdminUsername
 Write-Information "Creating resources in $groupName resource group."
-#deploy app registration if not already deployed
-$appRegistrationReturnValue = New-AzSubscriptionDeployment -Location $Location -TemplateFile "bicep\app-registration.bicep" -TemplateParameterFile "bicep\app-registration.parameters.json" | ConvertFrom-Json | Select-Object properties
-Write-Information "Azure AD App Registration $appRegistrationReturnValue"
-$azureADApp = $appRegistrationReturnValue.properties.outputs.azureAdAppId.value
-Write-Output "Azure Ad App Id: $azureADApp"
+
+#set keys for log analytics to be installed with Azure Log Analytics extension
+#$PublicSettings = @{ "workspaceId" = $logAnalyticsId }
+#$ProtectedSettings = @{ "workspaceKey" = $logAnalyticsKey }
+#
+#Set-AzVMExtension -ExtensionName "MicrosoftMonitoringAgent" `
+#    -ResourceGroupName $groupName `
+#    -VMName $vmName `
+#    -Publisher "Microsoft.EnterpriseCloud.Monitoring" `
+#    -ExtensionType "MicrosoftMonitoringAgent" `
+#    -TypeHandlerVersion 1.0 `
+#    -Settings $PublicSettings `
+#    -ProtectedSettings $ProtectedSettings `
+#    -Location $Location
+
+# OR use
+## https://www.powershellgallery.com/packages/Install-VMInsights/1.9
+#.\Install-VMInsights.ps1 -WorkspaceId $logAnalyticsId -WorkspaceKey $logAnalyticsKey -SubscriptionId $IPUSubscriptionId -WorkspaceRegion $Location
+
+# Create an application for signing in with Azure AD
+#New-AzureADApplication -DisplayName "MyApp" -IdentifierUris "https://myapp.com" -ReplyUrls "https://myapp.com/callback"
+
+# assign role to application to be able to create resources on behalf of user in resource group
+New-AzRoleAssignment -ApplicationId $IPUAppId -RoleDefinitionName "Owner" -ResourceGroupName $groupName
+
 Write-Output "Resources are created. Check Azure portal for details."
 Start-Process "https://portal.azure.com"
 

@@ -1,9 +1,15 @@
-﻿using Microsoft.Azure.Management.Fluent;
+﻿using Microsoft.Azure.Management.Compute.Fluent.Models;
+using Microsoft.Azure.Management.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
+using Newtonsoft.Json;
 using Spectre.Console;
 using UpdateViaManagedAPI;
 
-AnsiConsole.Write(new FigletText("Azure In-Place Upgrade").Centered().Color(Color.Red));
+AnsiConsole.Write(new Rule("Azure [red]InPlace Upgrade[/]"));
+if (AnsiConsole.Profile.Capabilities.Links)
+    AnsiConsole.MarkupLine(
+        "Check [link=https://github.com/vrhovnik/azure-vm-in-place-upgrade-examples]for more information[/]");
+
 var creds = LoadAzureCredentials();
 var vmName = Environment.GetEnvironmentVariable("vmName");
 if (string.IsNullOrEmpty(vmName))
@@ -44,7 +50,30 @@ if (string.IsNullOrEmpty(scriptPath))
     return;
 }
 
-await azure.UpdateMachineAsync(machine, scriptContent);
+var scriptParameterPath = Environment.GetEnvironmentVariable("ScriptParameterPath");
+if (string.IsNullOrEmpty(scriptParameterPath))
+    await azure.UpdateMachineAsync(machine, scriptContent);
+else
+{
+    AnsiConsole.WriteLine("You have defined the following path for parameters file");
+    path = new TextPath(scriptParameterPath)
+    {
+        RootStyle = new Style(foreground: Color.Red),
+        SeparatorStyle = new Style(foreground: Color.Green),
+        StemStyle = new Style(foreground: Color.Blue),
+        LeafStyle = new Style(foreground: Color.Yellow)
+    };
+    AnsiConsole.Write(path);
+    // reading and setting environment variables
+    var jsonString = File.ReadAllText(scriptParameterPath); 
+    var deserializedObject = JsonConvert.DeserializeObject<Dictionary<string, string>>(jsonString);
+    var list = new RunCommandInputParameter[deserializedObject.Count];
+    var currentPosition = 0;
+    foreach (var pair in deserializedObject)
+        list[currentPosition++] = new RunCommandInputParameter(pair.Key, pair.Value);
+    //calling script with actions
+    await azure.UpdateMachineAsync(machine, scriptContent, list);
+}
 
 IAzure LoadAzureCredentials()
 {
@@ -82,7 +111,7 @@ IAzure LoadAzureCredentials()
     AnsiConsole.Write(new Markup($"[bold yellow]App Client Secret[/] to [red]{secret}[/]"));
     AnsiConsole.WriteLine();
 
-    var tenantId = Environment.GetEnvironmentVariable("IPUAppSecret");
+    var tenantId = Environment.GetEnvironmentVariable("IPUTenantId");
     if (string.IsNullOrEmpty(tenantId))
     {
         tenantId = AnsiConsole.Prompt(

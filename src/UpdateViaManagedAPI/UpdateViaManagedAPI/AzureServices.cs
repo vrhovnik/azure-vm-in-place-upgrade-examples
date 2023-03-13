@@ -12,13 +12,13 @@ public class AzureServices
 
     public AzureServices(IAzure azure) => this.azure = azure;
 
-    public async Task<bool> UpdateMachineAsync(IVirtualMachine machine, string content,
+    public async Task UpdateMachineAsync(IVirtualMachine machine, string content,
         params RunCommandInputParameter[] runCommandInputParameters)
     {
         try
         {
             AnsiConsole.WriteLine($"Executing script {content}");
-            AnsiConsole.WriteLine("With parameters");
+            AnsiConsole.WriteLine("with parameters");
 
             var table = new Table()
                 .AddColumn("Name")
@@ -30,17 +30,32 @@ public class AzureServices
             }
             
             AnsiConsole.Write(table);
+
+            AnsiConsole.WriteLine();
+            AnsiConsole.WriteLine("Executing script");
             
-            await machine.RunPowerShellScriptAsync(new List<string> { content },
+            var stopWatch = Stopwatch.StartNew();
+            stopWatch.Start();
+            
+            var commandResultInner = await machine.RunPowerShellScriptAsync(new List<string> { content },
                 runCommandInputParameters);
+            
+            stopWatch.Stop();
+            AnsiConsole.WriteLine($"Script executed in {stopWatch.ElapsedMilliseconds} ms.");
+
+            table = new Table()
+                .AddColumn("Display status")
+                .AddColumn("Message");
+            foreach (var status in commandResultInner.Value)
+            {
+                table.AddRow(status.DisplayStatus, status.Message);
+            }
+            AnsiConsole.Write(table);
         }
         catch (Exception e)
         {
             AnsiConsole.WriteException(e);
-            return false;
         }
-
-        return true;
     }
 
     public async Task<IVirtualMachine> GetMachineByNameAsync(string name)

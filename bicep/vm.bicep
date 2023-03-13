@@ -5,8 +5,6 @@ param vmName string = 'ipu-vm-2016'
 param windowsAdminUsername string = 'ipuuser'
 
 @description('Password for Windows account. Password must have 3 of the following: 1 lower case character, 1 upper case character, 1 number, and 1 special character. The value must be between 8 and 40 characters long')
-@minLength(8)
-@maxLength(40)
 @secure()
 param windowsAdminPassword string
 
@@ -16,9 +14,6 @@ param windowsOSVersion string = '2016-Datacenter'
 @description('Location for all resources')
 param location string = resourceGroup().location
 
-@description('Log analytics name to store logs to')
-param location logAnalyticsWorkspace = 'LawInPlaceUpgrade'
-
 @description('Name for the IP')
 param publicIpAddressName string = 'ipu-vm-public-access'
 
@@ -26,10 +21,6 @@ param resourceTags object = {
    Description: 'Resource group for InPlace upgrade'
     Environment: 'Demo'
     ResourceType: 'VM'
-}
-
-resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2021-12-01-preview' existing = {
-  name: logAnalyticsWorkspace
 }
 
 var networkInterfaceName = '${vmName}-NIC'
@@ -136,17 +127,6 @@ resource vm 'Microsoft.Compute/virtualMachines@2022-03-01' = {
     hardwareProfile: {
       vmSize: 'Standard_B4ms' 
     }
-    workspaceId: logAnalytics.id
-    logs: [
-      {
-        category: 'AllMetrics'
-        enabled: true
-        retentionPolicy: {
-          days: 30
-          enabled: true 
-        }
-      }
-    ]
     storageProfile: {
       osDisk: {
         name: '${vmName}-OSDisk'
