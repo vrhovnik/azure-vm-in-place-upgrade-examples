@@ -13,9 +13,13 @@
 # Author      : Bojan Vrhovnik
 # GitHub      : https://github.com/vrhovnik
 # Version 1.2.0
-# SHORT CHANGE DESCRIPTION: adding read-host for secrets and password
+# SHORT CHANGE DESCRIPTION: adding environment files and azure app registration
 #>
 param(
+    [Parameter(HelpMessage = "Provide the location")]
+    $Location = "WestEurope",
+    [Parameter(Mandatory=$false)]
+    [switch]$UseEnvFile,
     [Parameter(Mandatory=$false)]
     [switch]$InstallModules,
     [Parameter(Mandatory=$false)]
@@ -52,8 +56,10 @@ if ($InstallBicep) {
     Write-Output "Bicep installed, continuing to Azure deployment."
 }
 
+Write-Output "Using location $Location data center"
+
 # create resource group if it doesn't exist with bicep file stored in bicep folder
-$groupNameReturnValue = New-AzSubscriptionDeployment -Location "WestEurope" -TemplateFile "bicep\rg.bicep" | ConvertFrom-Json | Select-Object properties
+$groupNameReturnValue = New-AzSubscriptionDeployment -Location $Location -TemplateFile "bicep\rg.bicep" | ConvertFrom-Json | Select-Object properties
 Write-Information $groupNameReturnValue
 $groupName = $groupNameReturnValue.properties.outputs.rgName.value
 Write-Information $groupName
@@ -72,6 +78,9 @@ $windowsAdminPassword = Read-Host "Enter password for Windows VM" -AsSecureStrin
 $publicIpAddressName = Read-Host "Enter public IP address name to be able to RDP into VM"
 Write-Information "Public IP address name: $publicIpAddressName"
 New-AzResourceGroupDeployment -ResourceGroupName $groupName -TemplateFile "bicep\vm.bicep" -logAnalyticsWorkspace $logAnalyticsName -vmName $vmName -windowsAdminPassword $windowsAdminPassword -publicIpAddressName $publicIpAddressName -windowsAdminUsername $windowsAdminUsername    
+
+#deploy app registration if not already deployed
+
 
 Stop-Transcript
 

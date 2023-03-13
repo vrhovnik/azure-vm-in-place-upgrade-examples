@@ -20,7 +20,6 @@ Before proceeding you need to read this two articles to set the base:
   * [Official way (managed disks)](#official-way--managed-disks-)
   * [ISO with Powershell (via Azure VM Custom Script Extension and either managed Azure SDK or Azure Automation or serverless aka Azure Functions)](#iso-with-powershell--via-azure-vm-custom-script-extension-and-either-managed-azure-sdk-or-azure-automation-or-serverless-aka-azure-functions-)
   * [Integration with Azure Monitor to get the logs in one place](#integration-with-azure-monitor-to-get-the-logs-in-one-place)
-  * [Common errors and solutions](#common-errors-and-solutions)
 * [Links for additional information](#links-for-additional-information)
 * [Contributing](#contributing)
 <!-- TOC -->
@@ -44,19 +43,18 @@ To help with the setup and install tools, go to [script](./scripts) folder:
    check [bicep](./bicep) folder for parameter files and configure parameters to be used or change the values in script
 2. (optional)[Install-Bicep.ps](./scripts/Install-Bicep.ps1) - installs Bicep for ARM template deployment
 
-> [!TIP]
-> In order to change the SKU of the machine to upgrade, you can find the values via the Azure Portal or via the
-> PowerShell. More [here](https://learn.microsoft.com/en-us/azure/virtual-machines/windows/cli-ps-findimage).
+In order to change the SKU of the machine to upgrade, you can find the values via the Azure Portal or via the
+PowerShell. More [here](https://learn.microsoft.com/en-us/azure/virtual-machines/windows/cli-ps-findimage).
 
 ```powershell
 # GET available SKU in West Europe
-$locName="WestEurope"
+$locName = "WestEurope"
 Get-AzVMImagePublisher -Location $locName | Select PublisherName
 
-$pubName="MicrosoftWindowsServer"
+$pubName = "MicrosoftWindowsServer"
 Get-AzVMImageOffer -Location $locName -PublisherName $pubName | Select Offer
 
-$offerName="WindowsServer"
+$offerName = "WindowsServer"
 Get-AzVMImageSku -Location $locName -PublisherName $pubName -Offer $offerName | Select Skus
 ```
 
@@ -66,9 +64,73 @@ To start an in-place upgrade the upgrade media must be attached to the VM as a M
 be used to upgrade multiple VMs, but it can only be used to upgrade a single VM at a time. To upgrade multiple VMs
 simultaneously multiple upgrade disks must be created for each simultaneous upgrade.
 
+To attach the disk to the machine, you can use the following script (you need to go to the [script](./scripts) folder):
+
+```powershell
+Create-UpgradableDisk.ps1 -ResourceGroup="InPlaceUpgradeRG" -VmName="ipu-vm-2016" -Location="westeurope" -DiskName="ipu-upgrade-disk" -Zone="" -UpgradeToWindowsServer2019
+```
+
+Parameters:
+
+1. **ResourceGroup** - Provide the name of the resourceGroup
+2. **VmName** - Provide the name of the VM to be upgraded
+3. **Location** - Provide the location of the Azure Resource Group
+4. **DiskName** - Provide the name of the disk
+5. **Zone** - Provide the name of zone for the source VM
+6. **UpgradeToWindowsServer2019** - Provide the name of the OS to upgrade to - you can choose between 2022 or 2019
+
+To start the upgrade, you need to have VM in running state.
+
+1. Connect to the VM using RDP or RDP-Bastion.
+2. Determine the drive letter for the upgrade disk (typically E: or F: if there are no other data disks).
+3. Start Windows PowerShell.
+4. Change directory to the only directory on the upgrade disk.
+5. Execute the following command to start the upgrade:
+
+```powershell
+.\setup.exe /auto upgrade /dynamicupdate disable
+Select the correct "Upgrade to" image based on the current version and configuration of the VM
+```
+
+| Upgrade from                             | Upgrade to                                                                             |
+|------------------------------------------|----------------------------------------------------------------------------------------|
+| Windows Server 2012 R2 (Core)            | Windows Server 2019                                                                    |
+| Windows Server 2012 R2                   | Windows Server 2019 (Desktop Experience)                                               |
+| Windows Server 2016 (Core)	              | Windows Server 2019 -or- Windows Server 2022                                           |
+| Windows Server 2016 (Desktop Experience) | Windows Server 2019 (Desktop Experience) -or- Windows Server 2022 (Desktop Experience) |
+| Windows Server 2019 (Core)               | Windows Server 2022                                                                    |
+| Windows Server 2019 (Desktop Experience) | Windows Server 2022 (Desktop Experience)                                               |
+
+You will need to upgrade VM to volume license (KMS server activation). Checks docs [for more](https://learn.microsoft.com/en-us/azure/virtual-machines/windows-in-place-upgrade#upgrade-vm-to-volume-license-kms-server-activation).
+
 ## ISO with Powershell (via Azure VM Custom Script Extension and either managed Azure SDK or Azure Automation or serverless aka Azure Functions)
 
-https://github.com/azure-samples/azure-samples-net-management/tree/master/samples/compute/manage-virtual-machine-extension
+To start an in-place upgrade you can upgrade via ISO file if ISO file enables the upgrade (check [docs](https://learn.microsoft.com/en-us/windows-server/get-started/perform-in-place-upgrade)).
+
+Code is written in [.NET Core](https://dot.net). You will need to have .NET installed to continue. How to do that is documented [here](https://dotnet.microsoft.com/en-us/download).
+
+Navigate to src folder and to the project folder:
+
+```powershell
+Set-Location "./src/UpdateViaManagedAPI"
+```
+
+Run the project by executing the following command:
+
+```powershell
+dotnet run
+```
+
+Follow the instructions on the screen.
+
+If you want to enable additional features, you can read about it more on this site:
+
+```powershell
+Start-Process "https://github.com/azure-samples/azure-samples-net-management/tree/master/samples/compute/manage-virtual-machine-extension"
+```
+
+_Remarks:_
+If you don't want to install .NET SDK on your machine, you can use [GitHub Codespaces](https://github.com/features/codespaces) to run the code. Check this [video](https://www.youtube.com/watch?v=1Vg7bNjJY-0)
 
 ## Integration with Azure Monitor to get the logs in one place
 
@@ -76,9 +138,11 @@ Azure Monitor enables you to monitor your workloads and add your own data to cus
 send data to REST endpoint or save it to events on the system and onboarding Azure VM to the Azure Monitoring, which
 will pick up the data in the system events.
 
-https://learn.microsoft.com/en-us/azure/azure-monitor/logs/data-collector-api?tabs=powershell
+Check out great article how to do that [here](https://docs.microsoft.com/en-us/azure/azure-monitor/agents/data-sources-custom-logs).
 
-## Common errors and solutions
+```powershell
+Start-Process "https://learn.microsoft.com/en-us/azure/azure-monitor/logs/data-collector-api?tabs=powershell"
+```
 
 # Links for additional information
 
