@@ -1,19 +1,26 @@
 # Azure Virtual Machine In-place upgrade examples
 
-An in-place upgrade allows you to go from an older operating system to a newer one while keeping your settings, server roles, and data intact. This repository shows few examples of how to effectively perform the procedure. If you want to deep dive into how the update works on Windows Server OS, check this article [here](https://learn.microsoft.com/en-us/windows-server/get-started/perform-in-place-upgrade).
+An in-place upgrade allows you to go from an older operating system to a newer one while keeping your settings, server
+roles, and data intact. This repository shows few examples of how to effectively perform the procedure. If you want to
+deep dive into how the update works on Windows Server OS, check this
+article [here](https://learn.microsoft.com/en-us/windows-server/get-started/perform-in-place-upgrade).
 
 Before proceeding you need to read this two articles to set the base:
-1.	[In-place upgrade](https://learn.microsoft.com/en-us/azure/virtual-machines/windows-in-place-upgrade) docs
-2.	[Windows Setup API](https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/windows-setup-command-line-options?view=windows-11) options
+
+1. [In-place upgrade](https://learn.microsoft.com/en-us/azure/virtual-machines/windows-in-place-upgrade) docs
+2. [Windows Setup API](https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/windows-setup-command-line-options?view=windows-11)
+   options
 
 # Table of contents
 
 <!-- TOC -->
-* [Prerequisites](#prerequisites)
-* [Official way (managed disks)](#official-way--managed-disks-)
-* [ISO with Powershell (via Azure VM Custom Script Extension and either managed Azure SDK or Azure Automation or serverless aka Azure Functions)](#iso-with-powershell--via-azure-vm-custom-script-extension-and-either-managed-azure-sdk-or-azure-automation-or-serverless-aka-azure-functions-)
-* [Integration with Azure Monitor to get the logs in one place](#integration-with-azure-monitor-to-get-the-logs-in-one-place)
-* [Common errors and solutions](#common-errors-and-solutions)
+* [Azure Virtual Machine In-place upgrade examples](#azure-virtual-machine-in-place-upgrade-examples)
+* [Table of contents](#table-of-contents)
+  * [Prerequisites](#prerequisites)
+  * [Official way (managed disks)](#official-way--managed-disks-)
+  * [ISO with Powershell (via Azure VM Custom Script Extension and either managed Azure SDK or Azure Automation or serverless aka Azure Functions)](#iso-with-powershell--via-azure-vm-custom-script-extension-and-either-managed-azure-sdk-or-azure-automation-or-serverless-aka-azure-functions-)
+  * [Integration with Azure Monitor to get the logs in one place](#integration-with-azure-monitor-to-get-the-logs-in-one-place)
+  * [Common errors and solutions](#common-errors-and-solutions)
 * [Links for additional information](#links-for-additional-information)
 * [Contributing](#contributing)
 <!-- TOC -->
@@ -21,20 +28,53 @@ Before proceeding you need to read this two articles to set the base:
 ## Prerequisites
 
 1. [PowerShell](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-windows)
-2. [Azure](https://portal.azure.com) Subscription and [Azure PowerShell](https://learn.microsoft.com/en-us/powershell/azure/install-az-ps?view=azps-9.4.0) module installed
-3. [Owner role](https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#owner) on the subscription
+2. [Azure](https://portal.azure.com) Subscription
+   and [Azure PowerShell](https://learn.microsoft.com/en-us/powershell/azure/install-az-ps?view=azps-9.4.0) module
+   installed
+3. [Owner role](https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#owner) on the
+   subscription
+
+To set up the environment you need to create a resource group and a VM with the OS you want to upgrade. You can use
+the [Azure Portal](https://portal.azure.com)
+or [Azure PowerShell](https://docs.microsoft.com/en-us/powershell/azure/overview?view=azps-9.4.0) to create the VM.
+
+To help with the setup and install tools, go to [script](./scripts) folder:
+
+1. [Init.ps1](./scripts/Init.ps1) - creates a resource group and a VM with the OS you want to upgrade -
+   check [bicep](./bicep) folder for parameter files and configure parameters to be used or change the values in script
+2. (optional)[Install-Bicep.ps](./scripts/Install-Bicep.ps1) - installs Bicep for ARM template deployment
+
+> [!TIP]
+> In order to change the SKU of the machine to upgrade, you can find the values via the Azure Portal or via the
+> PowerShell. More [here](https://learn.microsoft.com/en-us/azure/virtual-machines/windows/cli-ps-findimage).
+
+```powershell
+# GET available SKU in West Europe
+$locName="WestEurope"
+Get-AzVMImagePublisher -Location $locName | Select PublisherName
+
+$pubName="MicrosoftWindowsServer"
+Get-AzVMImageOffer -Location $locName -PublisherName $pubName | Select Offer
+
+$offerName="WindowsServer"
+Get-AzVMImageSku -Location $locName -PublisherName $pubName -Offer $offerName | Select Skus
+```
 
 ## Official way (managed disks)
 
-To start an in-place upgrade the upgrade media must be attached to the VM as a Managed Disk. The upgrade media disk can be used to upgrade multiple VMs, but it can only be used to upgrade a single VM at a time. To upgrade multiple VMs simultaneously multiple upgrade disks must be created for each simultaneous upgrade.
+To start an in-place upgrade the upgrade media must be attached to the VM as a Managed Disk. The upgrade media disk can
+be used to upgrade multiple VMs, but it can only be used to upgrade a single VM at a time. To upgrade multiple VMs
+simultaneously multiple upgrade disks must be created for each simultaneous upgrade.
 
 ## ISO with Powershell (via Azure VM Custom Script Extension and either managed Azure SDK or Azure Automation or serverless aka Azure Functions)
 
 https://github.com/azure-samples/azure-samples-net-management/tree/master/samples/compute/manage-virtual-machine-extension
 
-##	Integration with Azure Monitor to get the logs in one place
+## Integration with Azure Monitor to get the logs in one place
 
-Azure Monitor enables you to monitor your workloads and add your own data to custom table in Azure Log Analytics. We can send data to REST endpoint or save it to events on the system and onboarding Azure VM to the Azure Monitoring, which will pick up the data in the system events.
+Azure Monitor enables you to monitor your workloads and add your own data to custom table in Azure Log Analytics. We can
+send data to REST endpoint or save it to events on the system and onboarding Azure VM to the Azure Monitoring, which
+will pick up the data in the system events.
 
 https://learn.microsoft.com/en-us/azure/azure-monitor/logs/data-collector-api?tabs=powershell
 
@@ -48,7 +88,7 @@ https://learn.microsoft.com/en-us/azure/azure-monitor/logs/data-collector-api?ta
 4. [Custom script extensions in Azure Virtual Machine](https://learn.microsoft.com/en-us/azure/virtual-machines/extensions/custom-script-windows)
 5. [Create snapshot of the disks](https://learn.microsoft.com/en-us/azure/virtual-machines/snapshot-copy-managed-disk?tabs=portal)
 6. [Backup and restore for Managed Disks](https://learn.microsoft.com/en-us/azure/virtual-machines/backup-and-disaster-recovery-for-azure-iaas-disks)
-7. [Azure Monitor HTTP Data Collectior API](https://learn.microsoft.com/en-us/azure/azure-monitor/logs/data-collector-api?tabs=powershell)
+7. [Azure Monitor HTTP Data Collector API](https://learn.microsoft.com/en-us/azure/azure-monitor/logs/data-collector-api?tabs=powershell)
 
 # Contributing
 
