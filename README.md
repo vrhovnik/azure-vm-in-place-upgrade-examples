@@ -18,7 +18,7 @@ Before proceeding you need to read this two articles to set the base:
 * [Table of contents](#table-of-contents)
   * [Prerequisites](#prerequisites)
   * [Official way (managed disks)](#official-way--managed-disks-)
-  * [ISO with Powershell (via Azure VM Custom Script Extension and either managed Azure SDK or Azure Automation or serverless aka Azure Functions)](#iso-with-powershell--via-azure-vm-custom-script-extension-and-either-managed-azure-sdk-or-azure-automation-or-serverless-aka-azure-functions-)
+  * [ISO with Powershell (via Azure VM Run Script Extension and either managed Azure SDK or Azure Automation or serverless aka Azure Functions)](#iso-with-powershell--via-azure-vm-run-script-extension-and-either-managed-azure-sdk-or-azure-automation-or-serverless-aka-azure-functions-)
   * [Integration with Azure Monitor to get the logs in one place](#integration-with-azure-monitor-to-get-the-logs-in-one-place)
 * [Links for additional information](#links-for-additional-information)
 * [Contributing](#contributing)
@@ -79,7 +79,7 @@ Parameters:
 5. **Zone** - Provide the name of zone for the source VM
 6. **UpgradeToWindowsServer2019** - Provide the name of the OS to upgrade to - you can choose between 2022 or 2019
 
-To start the upgrade, you need to have VM in running state.
+To start the upgrade, you need to have VM in **running** state.
 
 1. Connect to the VM using RDP or RDP-Bastion.
 2. Determine the drive letter for the upgrade disk (typically E: or F: if there are no other data disks).
@@ -103,7 +103,7 @@ Select the correct "Upgrade to" image based on the current version and configura
 
 You will need to upgrade VM to volume license (KMS server activation). Checks docs [for more](https://learn.microsoft.com/en-us/azure/virtual-machines/windows-in-place-upgrade#upgrade-vm-to-volume-license-kms-server-activation).
 
-## ISO with Powershell (via Azure VM Custom Script Extension and either managed Azure SDK or Azure Automation or serverless aka Azure Functions)
+## ISO with Powershell (via Azure VM Run Script Extension and either managed Azure SDK or Azure Automation or serverless aka Azure Functions)
 
 To start an in-place upgrade you can upgrade via ISO file if ISO file enables the upgrade (check [docs](https://learn.microsoft.com/en-us/windows-server/get-started/perform-in-place-upgrade)).
 
@@ -121,16 +121,41 @@ Run the project by executing the following command:
 dotnet run
 ```
 
-Follow the instructions on the screen.
+Follow the instructions on the screen or provide environment variables to login to Azure:
+1. **IPUTenantId** - tenant id
+2. **IPUSubscriptionId** - subscription where VM is located
+3. **IPUAppId** - application id
+4. **IPUAppSecret** - secret for the application to login
+5. **vmName** - name of the VM to be upgraded
 
-If you want to enable additional features, you can read about it more on this site:
+If you want to use the following [script](./scripts/Execute-InPlaceManaged.ps1) to update the VM, you need to have the following environment variables set:
+1. **FileShareLocation** - Azure Files share location with provided data
+2. **IsoFolder** - folder name where ISO file is located
+3. **IsoName** - name of the ISO
+4. **Username** - username to authenticate to Azure Files
+5. **Key** - key to authenticate to Azure Files
+
+How to pass env variables - you can check out [docs for dotnet run](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-run).
+
+If you want to automate the process, you can use PowerShell great ability to prepare the environment for you.
+
+```powershell
+Get-Content $PathToENVFile | ForEach-Object {
+    $name, $value = $_.split('=')
+    Set-Content env:\$name $value
+}
+```
+
+Prepare file (example [here](./scripts/env-file-example.changetoenv) - rename to .env) and exclude *.env files from putting it to the repo. More [here](https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files).
+
+If you want to enable/add additional features, you can read about it more on this site:
 
 ```powershell
 Start-Process "https://github.com/azure-samples/azure-samples-net-management/tree/master/samples/compute/manage-virtual-machine-extension"
 ```
 
 _Remarks:_
-If you don't want to install .NET SDK on your machine, you can use [GitHub Codespaces](https://github.com/features/codespaces) to run the code. Check this [video](https://www.youtube.com/watch?v=1Vg7bNjJY-0)
+If you don't want to install .NET SDK on your machine, you can use [GitHub Codespaces](https://github.com/features/codespaces) to run the code. Check this [video](https://www.youtube.com/watch?v=1Vg7bNjJY-0).
 
 ## Integration with Azure Monitor to get the logs in one place
 

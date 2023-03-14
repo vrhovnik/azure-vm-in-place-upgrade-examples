@@ -13,11 +13,13 @@
 # Author      : Bojan Vrhovnik
 # GitHub      : https://github.com/vrhovnik
 # Version 1.2.0
-# SHORT CHANGE DESCRIPTION: adding app registration
+# SHORT CHANGE DESCRIPTION: adding app registration and env
 #>
 param(
     [Parameter(HelpMessage = "Provide the location")]
     $Location = "WestEurope",
+    [Parameter(HelpMessage = "Provide the name of the app to be generated")]
+    $AppName = "Azure-Ad-Inplace-Upgrade",
     [Parameter(Mandatory = $false)]
     [switch]$UseEnvFile,
     [Parameter(Mandatory = $false)]
@@ -69,8 +71,8 @@ Write-Output "$groupName resource group created."
 $logAnalyticsNameReturnValue = New-AzResourceGroupDeployment -ResourceGroupName $groupName -TemplateFile "..\bicep\log-analytics.bicep" -TemplateParameterFile "..\bicep\log-analytics.parameters.json"
 Write-Information $logAnalyticsNameReturnValue
 $logAnalyticsName = $logAnalyticsNameReturnValue.Outputs.logAnalyticsName.Value
-$logAnalyticsId = $logAnalyticsNameReturnValue.Outputs.logAnalyticsId.Value
-$logAnalyticsKey = $logAnalyticsNameReturnValue.Outputs.logAnalyticsKey.Value
+#$logAnalyticsId = $logAnalyticsNameReturnValue.Outputs.logAnalyticsId.Value
+#$logAnalyticsKey = $logAnalyticsNameReturnValue.Outputs.logAnalyticsKey.Value
 Write-Output "Log analytics workspace $logAnalyticsName created."
 
 if ($UseEnvFile)
@@ -118,10 +120,13 @@ Write-Information "Creating resources in $groupName resource group."
 #.\Install-VMInsights.ps1 -WorkspaceId $logAnalyticsId -WorkspaceKey $logAnalyticsKey -SubscriptionId $IPUSubscriptionId -WorkspaceRegion $Location
 
 # Create an application for signing in with Azure AD
-#New-AzureADApplication -DisplayName "MyApp" -IdentifierUris "https://myapp.com" -ReplyUrls "https://myapp.com/callback"
-
-# assign role to application to be able to create resources on behalf of user in resource group
-New-AzRoleAssignment -ApplicationId $IPUAppId -RoleDefinitionName "Owner" -ResourceGroupName $groupName
+if ($null -eq [System.Environment]::GetEnvironmentVariable("IPUAppId"))
+{
+    $appId = New-AzureADApplication -DisplayName $AppName -IdentifierUris "https://$AppName.com" -ReplyUrls "https://$AppName.com/callback"
+    New-Item -Path Env:\IPUAppId -Value $appId.AppId
+    # assign role to application to be able to create resources on behalf of user in resource group
+    New-AzRoleAssignment -ApplicationId $IPUAppId -RoleDefinitionName "Owner" -ResourceGroupName $groupName
+}
 
 Write-Output "Resources are created. Check Azure portal for details."
 Start-Process "https://portal.azure.com"
