@@ -38,35 +38,27 @@ if ($UpgradeToWindowsServer2019)
 $publisher = "MicrosoftWindowsServer"
 $offer = "WindowsServerUpgrade"
 $managedDiskSKU = "Standard_LRS"
-#
+
+Write-Output "Publisher: $publisher, Offer: $offer, Sku: $sku, ResourceGroup: $ResourceGroup, Location: $Location"
+
 # Get the latest version of the special (hidden) VM Image from the Azure Marketplace
 $versions = Get-AzVMImage -PublisherName $publisher -Location $Location -Offer $offer -Skus $sku | Sort-Object -Descending { [version]$_.Version }
 $latestString = $versions[0].Version
 
 # Get the special (hidden) VM Image from the Azure Marketplace by version - the image is used to create a disk to upgrade to the new version
-$image = Get-AzVMImage -Location $Location `
-                       -PublisherName $publisher `
-                       -Offer $offer `
-                       -Skus $sku `
-                       -Version $latestString
+$image = Get-AzVMImage -Location $Location -PublisherName $publisher -Offer $offer -Skus $sku -Version $latestString
 
-#
 # Create Managed Disk from LUN 0 of the special (hidden) VM Image
-$diskConfig = New-AzDiskConfig -SkuName $managedDiskSKU `
-                                   -CreateOption FromImage `
-                                   -Location $Location
+$diskConfig = New-AzDiskConfig -SkuName $managedDiskSKU -CreateOption "FromImage" -Location $Location
 if ($Zone)
 {
-    $diskConfig = New-AzDiskConfig -SkuName $managedDiskSKU `
-                                   -CreateOption FromImage `
-                                   -Zone $zone `
-                                   -Location $Location
+    $diskConfig = New-AzDiskConfig -SkuName $managedDiskSKU -CreateOption "FromImage" -Zone $zone -Location $Location
 }
 
-Set-AzDiskImageReference -Disk $diskConfig -Id $image.Id -Lun 0
-$dataDisk1 = New-AzDisk -ResourceGroupName $ResourceGroup `
-           -DiskName $DiskName `
-           -Disk $diskConfig
+$galleryVmId=$image.Id
+Write-Output "Creating disk $DiskName from image $galleryVmId"
+$diskConfig = Set-AzDiskImageReference -Disk $diskConfig -Id $galleryVmId -Lun 0
+$dataDisk1 = New-AzDisk -ResourceGroupName $ResourceGroup -DiskName $DiskName -Disk $diskConfig
 
 Write-Output "Disk created, adding to VM $VmName"
 # Get the VM object
@@ -75,15 +67,17 @@ Write-Information "VM object: $vm"
 
 # Add a new data disk configuration
 Write-Information "Adding disk to VM $VmName"
-$diskAdded = Add-AzVMDataDisk -VM $vm -Name $dataDiskName -CreateOption Attach -ManagedDiskId $dataDisk1.Id -Lun 1
+$diskAdded = Add-AzVMDataDisk -VM $vm -Name $DiskName -CreateOption Attach -ManagedDiskId $dataDisk1.Id -Lun 1
 Write-Information "Disk added to VM: $diskAdded"
 
 # Update the VM with the new configuration
 Update-AzVM -ResourceGroupName $ResourceGroup-VM $VmName
+
 # start VM
 Start-AzVM -ResourceGroupName $ResourceGroup -Name $VmName
 Write-Output "Disk added to VM $VmName. Get updated version of the VM object to see the changes."
 
+Write-Output "Loop through disks in VM $VmName"
 $vm = Get-AzVM -ResourceGroupName $ResourceGroup -Name $VmName
 $vm.StorageProfile.DataDisks | Select-Object Name, Lun, DiskSizeGB
 

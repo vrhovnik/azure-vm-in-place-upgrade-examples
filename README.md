@@ -67,7 +67,7 @@ simultaneously multiple upgrade disks must be created for each simultaneous upgr
 To attach the disk to the machine, you can use the following script (you need to go to the [script](./scripts) folder):
 
 ```powershell
-Create-UpgradableDisk.ps1 -ResourceGroup="InPlaceUpgradeRG" -VmName="ipu-vm-2016" -Location="westeurope" -DiskName="ipu-upgrade-disk" -Zone="" -UpgradeToWindowsServer2019
+.\Create-UpgradableDisk.ps1 -ResourceGroup "InPlaceUpgradeRG" -VmName "ipu-vm-2016" -Location "westeurope" -DiskName "ipu-upgrade-disk" -Zone "" -UpgradeToWindowsServer2019
 ```
 
 Parameters:

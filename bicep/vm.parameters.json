@@ -3,16 +3,16 @@
   "contentVersion": "1.0.0.0",
   "parameters": {    
     "vmName": {
-      "value": "tta-vm2-2022"
+      "value": "ipu-vm2-2022"
     }, 
     "windowsAdminUsername": {
-      "value": "ttauser"
+      "value": "ipuuser"
     },
     "windowsAdminPassword": {
-      "value": "Passw0rd1!"
+      "value": "This1sPassw0rd1!"
     },
     "publicIpAddressName":{
-      "value":"tta-public-access"
+      "value":"ipu-2-public-access"
     }           
   }
 }
